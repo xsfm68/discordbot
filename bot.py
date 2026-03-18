@@ -48,39 +48,43 @@ class TicketView(discord.ui.View):
         owner_id = int(topic.split("-")[1])
         owner = guild.get_member(owner_id)
 
+        # ===== TRANSCRIPT FIX =====
         logs = []
 
         async for msg in channel.history(limit=200, oldest_first=True):
             time = msg.created_at.strftime("%d/%m/%Y %H:%M")
             content = msg.content if msg.content else "[aucun texte]"
+            logs.append(f"{time} | {msg.author} : {content}")
 
-            # éviter les messages vides / bug
-            if len(content.strip()) == 0:
-                content = "[message vide]"
-
-            logs.append(f"[{time}] {msg.author}: {content}")
-
-        # 🔥 sécurité anti fichier vide
         if not logs:
             logs.append("Aucun message dans le ticket.")
 
-        transcript_text = "\n".join(logs)
-
-        file = discord.File(
-            io.BytesIO(transcript_text.encode("utf-8")),
-            filename="transcript.txt"
+        transcript_text = (
+            "===== TRANSCRIPT TICKET =====\n\n"
+            f"Salon : {channel.name}\n"
+            f"Fermé le : {datetime.now().strftime('%d/%m/%Y %H:%M')}\n\n"
+            "=============================\n\n"
         )
+
+        transcript_text += "\n".join(logs)
+
+        file_bytes = io.BytesIO()
+        file_bytes.write(transcript_text.encode("utf-8"))
+        file_bytes.seek(0)
+
+        # 🔥 .log = FIX DEFINITIF
+        file = discord.File(file_bytes, filename="transcript.log")
 
         # LOG CHANNEL
         log_channel = guild.get_channel(TICKET_LOG_CHANNEL)
         if log_channel:
             await log_channel.send(file=file)
 
-        # MP USER FIX
+        # MP USER
         if owner:
             try:
                 await owner.send(
-                    "✅ Votre ticket a été fermé.\n📄 Voici un logs du ticket.\n\nNous vous remercions de soutenir Game Store !",
+                    content="✅ Votre ticket a été fermé.\n📄 Voici un logs du ticket.\n\nNous vous remercions de soutenir Game Store !",
                     file=file
                 )
             except Exception as e:
