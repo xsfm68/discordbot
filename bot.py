@@ -6,7 +6,7 @@ import io
 import os
 
 # ===== CONFIG =====
-TOKEN = os.getenv("TOKEN")  # IMPORTANT pour Railway
+TOKEN = os.getenv("TOKEN")
 GUILD_ID = 1483270417056665806
 TICKET_CATEGORY_ID = 1483271654736920646
 SUPPORT_ROLE_ID = 1483551910635114672
@@ -43,7 +43,11 @@ class TicketView(discord.ui.View):
     def __init__(self):
         super().__init__(timeout=None)
 
-    @discord.ui.button(label="🔒 Fermer", style=discord.ButtonStyle.red)
+    @discord.ui.button(
+        label="🔒 Fermer",
+        style=discord.ButtonStyle.red,
+        custom_id="close_ticket_button"
+    )
     async def close(self, interaction: discord.Interaction, button: discord.ui.Button):
         channel = interaction.channel
         guild = interaction.guild
@@ -102,7 +106,11 @@ class TicketSelect(discord.ui.Select):
             discord.SelectOption(label="Jeux PC"),
             discord.SelectOption(label="Jeux Console"),
         ]
-        super().__init__(placeholder="Choisis", options=options)
+        super().__init__(
+            placeholder="Choisis",
+            options=options,
+            custom_id="ticket_select"
+        )
 
     async def callback(self, interaction: discord.Interaction):
         guild = interaction.guild
@@ -111,17 +119,16 @@ class TicketSelect(discord.ui.Select):
         if not guild:
             return
 
-        # 🔥 ANTI DOUBLE TICKET GLOBAL
+        # Anti double ticket
         for ch in guild.text_channels:
             if ch.topic and f"ticket-{member.id}" in ch.topic:
                 await interaction.response.send_message(
-                    "❌ Tu as déjà un ticket ouvert ! Ferme-le avant d'en créer un autre.",
+                    "❌ Tu as déjà un ticket ouvert !",
                     ephemeral=True
                 )
                 return
 
         category_name = self.values[0]
-
         category = guild.get_channel(TICKET_CATEGORY_ID)
 
         overwrites = {
@@ -130,7 +137,6 @@ class TicketSelect(discord.ui.Select):
             guild.get_role(SUPPORT_ROLE_ID): discord.PermissionOverwrite(view_channel=True)
         }
 
-        # NOM CHANNEL = catégorie uniquement
         channel_name = category_name.lower().replace(" ", "-")
 
         channel = await guild.create_text_channel(
@@ -140,7 +146,6 @@ class TicketSelect(discord.ui.Select):
             overwrites=overwrites
         )
 
-        # Question personnalisée
         if category_name == "Cartes cadeaux":
             question = "Quelle carte cadeau veux-tu ?"
         elif "Jeux" in category_name:
@@ -158,6 +163,7 @@ class TicketSelect(discord.ui.Select):
         await interaction.response.send_message(f"✅ Ticket créé : {channel.mention}", ephemeral=True)
 
 
+# ===== PANEL =====
 class PanelView(discord.ui.View):
     def __init__(self):
         super().__init__(timeout=None)
@@ -182,9 +188,11 @@ bot.tree.add_command(panel)
 @bot.event
 async def on_ready():
     print(f"Connecté en tant que {bot.user}")
+
     guild = discord.Object(id=GUILD_ID)
     bot.tree.copy_global_to(guild=guild)
     await bot.tree.sync(guild=guild)
+
     bot.add_view(TicketView())
     bot.add_view(PanelView())
 
