@@ -9,7 +9,7 @@ TOKEN = os.getenv("TOKEN")
 GUILD_ID = 1483270417056665806
 TICKET_CATEGORY_ID = 1483271654736920646
 SUPPORT_ROLE_ID = 1483551910635114672
-TICKET_LOG_CHANNEL = 1483553693872820235
+TICKET_LOG_CHANNEL = 1483812985964200177
 # ==================
 
 intents = discord.Intents.default()
@@ -18,7 +18,6 @@ intents.members = True
 
 bot = commands.Bot(command_prefix="!", intents=intents)
 
-# ===== EMOJIS =====
 EMOJI_MAP = {
     "Question": "❓",
     "Cartes cadeaux": "🎁",
@@ -26,7 +25,7 @@ EMOJI_MAP = {
     "Jeux Console": "🎮"
 }
 
-# ===== VIEW TICKET =====
+# ===== VIEW =====
 class TicketView(discord.ui.View):
     def __init__(self):
         super().__init__(timeout=None)
@@ -54,12 +53,9 @@ class TicketView(discord.ui.View):
             logs.append(f"[{msg.author}] : {content}")
 
         logs.reverse()
-        transcript_text = "\n".join(logs)
+        transcript = "\n".join(logs)
 
-        file = discord.File(
-            io.BytesIO(transcript_text.encode("utf-8")),
-            filename="transcript.txt"
-        )
+        file = discord.File(io.BytesIO(transcript.encode("utf-8")), filename="transcript.txt")
 
         log_channel = guild.get_channel(TICKET_LOG_CHANNEL)
         if log_channel:
@@ -76,7 +72,7 @@ class TicketView(discord.ui.View):
 
         await channel.delete()
 
-# ===== SELECT MENU =====
+# ===== SELECT =====
 class TicketSelect(discord.ui.Select):
     def __init__(self):
         options = [
@@ -91,6 +87,7 @@ class TicketSelect(discord.ui.Select):
         guild = interaction.guild
         member = interaction.user
 
+        # Anti double ticket
         for ch in guild.text_channels:
             if ch.topic and f"ticket-{member.id}" in ch.topic:
                 await interaction.response.send_message("❌ Tu as déjà un ticket", ephemeral=True)
@@ -99,6 +96,7 @@ class TicketSelect(discord.ui.Select):
         category_name = self.values[0]
         category = guild.get_channel(TICKET_CATEGORY_ID)
 
+        # Numéro unique
         ticket_number = 1
         for ch in guild.text_channels:
             if "ticket-" in ch.name:
@@ -111,7 +109,6 @@ class TicketSelect(discord.ui.Select):
 
         ticket_id = str(ticket_number).zfill(3)
         emoji = EMOJI_MAP.get(category_name, "📩")
-
         channel_name = f"{emoji}-ticket-{ticket_id}"
 
         overwrites = {
@@ -127,38 +124,44 @@ class TicketSelect(discord.ui.Select):
             overwrites=overwrites
         )
 
+        # ===== EMBED STYLE PRO =====
         embed = discord.Embed(
             title="🎫 Nouveau ticket",
-            description=f"👤 {member.mention}\n📂 {category_name}",
-            color=0x00ff00
+            description=(
+                f"👤 **Client :** {member.mention}\n"
+                f"🛠️ **Support :** <@&{SUPPORT_ROLE_ID}>\n"
+                f"📂 **Catégorie :** {category_name}\n\n"
+                f"━━━━━━━━━━━━━━━\n"
+                f"💬 Merci d'expliquer votre demande, un membre du staff va vous répondre.\n\n"
+                f"━━━━━━━━━━━━━━━\n"
+                f"💳 **Moyens de paiements :**\n"
+                f"• PayPal (amie proche / sans notes)\n"
+                f"• LTC"
+            ),
+            color=0x2b2d31
         )
 
-        await channel.send(
-            f"{member.mention} <@&{SUPPORT_ROLE_ID}>",
-            embed=embed,
-            view=TicketView()
-        )
+        await channel.send(embed=embed, view=TicketView())
 
         await interaction.response.send_message(f"✅ Ticket créé : {channel.mention}", ephemeral=True)
 
-# ===== PANEL VIEW =====
+# ===== PANEL =====
 class PanelView(discord.ui.View):
     def __init__(self):
         super().__init__(timeout=None)
         self.add_item(TicketSelect())
 
-# ===== COMMANDE PANEL =====
 @app_commands.command(name="panel", description="Créer panel ticket")
 async def panel(interaction: discord.Interaction):
     embed = discord.Embed(
-        title="🎫 Support — Game Store FR",
+        title="🎫 Support — YOMA Shop",
         description=(
-            "Besoin d'aide sur un produit ou une commande ? Ouvre un ticket, notre équipe te répond rapidement.\n\n"
+            "Besoin d'aide sur un produit ou une commande ? Ouvre un ticket.\n\n"
             "**1.** Clique sur *Ouvrir un ticket*\n"
-            "**2.** Un salon privé est créé pour toi\n"
-            "**3.** Le staff t'assiste directement\n\n"
+            "**2.** Un salon privé est créé\n"
+            "**3.** Le staff t'aide directement\n\n"
             "━━━━━━━━━━━━━━━\n"
-            "**💳 Moyens de paiements :**\n"
+            "💳 **Moyens de paiements :**\n"
             "• PayPal (amie proche / sans notes)\n"
             "• LTC"
         ),
