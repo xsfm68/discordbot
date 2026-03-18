@@ -154,7 +154,7 @@ class PanelView(discord.ui.View):
 @app_commands.command(name="panel", description="Créer panel ticket")
 async def panel(interaction: discord.Interaction):
     embed = discord.Embed(
-        title="🎫 Support — YOMA Shop",
+        title="🎫 Support — Game Store FR",
         description=(
             "Besoin d'aide sur un produit ou une commande ? Ouvre un ticket.\n\n"
             "**1.** Clique sur *Ouvrir un ticket*\n"
