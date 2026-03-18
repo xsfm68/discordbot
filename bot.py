@@ -3,6 +3,7 @@ from discord import app_commands
 from discord.ext import commands
 import io
 import os
+from datetime import datetime
 
 # ===== CONFIG =====
 TOKEN = os.getenv("TOKEN")
@@ -48,27 +49,42 @@ class TicketView(discord.ui.View):
         owner = guild.get_member(owner_id)
 
         logs = []
-        async for msg in channel.history(limit=100):
-            content = msg.content.replace("\n", " ")
-            logs.append(f"[{msg.author}] : {content}")
 
-        logs.reverse()
-        transcript = "\n".join(logs)
+        async for msg in channel.history(limit=200, oldest_first=True):
+            time = msg.created_at.strftime("%d/%m/%Y %H:%M")
+            content = msg.content if msg.content else "[aucun texte]"
 
-        file = discord.File(io.BytesIO(transcript.encode("utf-8")), filename="transcript.txt")
+            # éviter les messages vides / bug
+            if len(content.strip()) == 0:
+                content = "[message vide]"
 
+            logs.append(f"[{time}] {msg.author}: {content}")
+
+        # 🔥 sécurité anti fichier vide
+        if not logs:
+            logs.append("Aucun message dans le ticket.")
+
+        transcript_text = "\n".join(logs)
+
+        file = discord.File(
+            io.BytesIO(transcript_text.encode("utf-8")),
+            filename="transcript.txt"
+        )
+
+        # LOG CHANNEL
         log_channel = guild.get_channel(TICKET_LOG_CHANNEL)
         if log_channel:
             await log_channel.send(file=file)
 
+        # MP USER FIX
         if owner:
             try:
                 await owner.send(
                     "✅ Votre ticket a été fermé.\n📄 Voici un logs du ticket.\n\nNous vous remercions de soutenir Game Store !",
                     file=file
                 )
-            except:
-                pass
+            except Exception as e:
+                print("Erreur MP :", e)
 
         await channel.delete()
 
@@ -87,7 +103,6 @@ class TicketSelect(discord.ui.Select):
         guild = interaction.guild
         member = interaction.user
 
-        # Anti double ticket
         for ch in guild.text_channels:
             if ch.topic and f"ticket-{member.id}" in ch.topic:
                 await interaction.response.send_message("❌ Tu as déjà un ticket", ephemeral=True)
@@ -96,7 +111,6 @@ class TicketSelect(discord.ui.Select):
         category_name = self.values[0]
         category = guild.get_channel(TICKET_CATEGORY_ID)
 
-        # Numéro unique
         ticket_number = 1
         for ch in guild.text_channels:
             if "ticket-" in ch.name:
@@ -124,7 +138,6 @@ class TicketSelect(discord.ui.Select):
             overwrites=overwrites
         )
 
-        # ===== EMBED STYLE PRO =====
         embed = discord.Embed(
             title="🎫 Nouveau ticket",
             description=(
@@ -132,7 +145,7 @@ class TicketSelect(discord.ui.Select):
                 f"🛠️ **Support :** <@&{SUPPORT_ROLE_ID}>\n"
                 f"📂 **Catégorie :** {category_name}\n\n"
                 f"━━━━━━━━━━━━━━━\n"
-                f"💬 Merci d'expliquer votre demande, un membre du staff va vous répondre.\n\n"
+                f"💬 Merci d'expliquer votre demande.\n\n"
                 f"━━━━━━━━━━━━━━━\n"
                 f"💳 **Moyens de paiements :**\n"
                 f"• PayPal (amie proche / sans notes)\n"
